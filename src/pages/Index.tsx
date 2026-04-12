@@ -1,16 +1,39 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { AppSidebar } from "@/components/AppSidebar";
+import { MobileNav } from "@/components/MobileNav";
+import { InventoryTab } from "@/components/InventoryTab";
+import { InvoicesTab } from "@/components/InvoicesTab";
+import { DeliveriesTab } from "@/components/DeliveriesTab";
+import { EmployeesTab } from "@/components/EmployeesTab";
+import { AdminTab } from "@/components/AdminTab";
+import { ConfigTab } from "@/components/ConfigTab";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const [activeTab, setActiveTab] = useState("estoque");
+
+  const renderTab = () => {
+    switch (activeTab) {
+      case "estoque": return <InventoryTab />;
+      case "notas": return <InvoicesTab />;
+      case "baixas": return <DeliveriesTab />;
+      case "funcionarios": return <EmployeesTab />;
+      case "admin": return <AdminTab />;
+      case "config": return <ConfigTab />;
+      default: return <InventoryTab />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen flex bg-background">
+      <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <main className="flex-1 flex flex-col min-w-0">
+        <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex-1 overflow-auto p-4 sm:p-8">
+          {renderTab()}
+        </div>
+      </main>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
