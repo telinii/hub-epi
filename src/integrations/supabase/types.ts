@@ -14,7 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      deliveries: {
+        Row: {
+          created_at: string
+          delivered_at: string
+          employee_id: string
+          equipment_id: string
+          id: string
+          notes: string | null
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string
+          employee_id: string
+          equipment_id: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string
+          employee_id?: string
+          equipment_id?: string
+          id?: string
+          notes?: string | null
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliveries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          active: boolean
+          created_at: string
+          department: string | null
+          id: string
+          name: string
+          registration: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          department?: string | null
+          id?: string
+          name: string
+          registration: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          department?: string | null
+          id?: string
+          name?: string
+          registration?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment: {
+        Row: {
+          ca: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          min_quantity: number
+          name: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          ca: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_quantity?: number
+          name: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          ca?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_quantity?: number
+          name?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          created_at: string
+          equipment_id: string
+          id: string
+          invoice_id: string
+          quantity: number
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          equipment_id: string
+          id?: string
+          invoice_id: string
+          quantity: number
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          equipment_id?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          invoice_number: string
+          notes: string | null
+          supplier: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number: string
+          notes?: string | null
+          supplier: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          supplier?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
