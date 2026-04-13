@@ -197,6 +197,30 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_reports: {
+        Row: {
+          created_at: string
+          file_path: string
+          generated_by: string
+          id: string
+          report_month: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          generated_by?: string
+          id?: string
+          report_month: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          generated_by?: string
+          id?: string
+          report_month?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
