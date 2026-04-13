@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3 } from "lucide-react";
 
 interface AppSidebarProps {
   activeTab: string;
@@ -9,9 +9,10 @@ const menuItems = [
   { id: "estoque", label: "[01] ESTOQUE", icon: Package, group: "Módulos do Sistema" },
   { id: "notas", label: "[02] NOTAS FISCAIS", icon: FileText, group: "Módulos do Sistema" },
   { id: "baixas", label: "[03] BAIXAS", icon: ArrowDownCircle, group: "Módulos do Sistema" },
-  { id: "funcionarios", label: "[04] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal" },
-  { id: "admin", label: "[05] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal" },
-  { id: "config", label: "[06] CONFIGURAÇÕES", icon: Settings, group: "Sistema" },
+  { id: "relatorios", label: "[04] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema" },
+  { id: "funcionarios", label: "[05] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal" },
+  { id: "admin", label: "[06] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal" },
+  { id: "config", label: "[07] CONFIGURAÇÕES", icon: Settings, group: "Sistema" },
 ];
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
