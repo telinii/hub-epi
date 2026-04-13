@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3 } from "lucide-react";
 import { useState } from "react";
 
 interface MobileNavProps {
@@ -10,6 +10,7 @@ const menuItems = [
   { id: "estoque", label: "ESTOQUE", icon: Package },
   { id: "notas", label: "NOTAS FISCAIS", icon: FileText },
   { id: "baixas", label: "BAIXAS", icon: ArrowDownCircle },
+  { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3 },
   { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users },
   { id: "admin", label: "ADMIN", icon: Shield },
   { id: "config", label: "CONFIG", icon: Settings },
