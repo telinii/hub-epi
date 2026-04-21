@@ -1,21 +1,47 @@
 import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const menuItems = [
-  { id: "estoque", label: "[01] ESTOQUE", icon: Package, group: "Módulos do Sistema" },
-  { id: "notas", label: "[02] NOTAS FISCAIS", icon: FileText, group: "Módulos do Sistema" },
-  { id: "baixas", label: "[03] BAIXAS", icon: ArrowDownCircle, group: "Módulos do Sistema" },
-  { id: "relatorios", label: "[04] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema" },
-  { id: "funcionarios", label: "[05] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal" },
-  { id: "admin", label: "[06] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal" },
-  { id: "config", label: "[07] CONFIGURAÇÕES", icon: Settings, group: "Sistema" },
+const allItems = [
+  { id: "estoque", label: "[01] ESTOQUE", icon: Package, group: "Módulos do Sistema", adminOnly: false },
+  { id: "notas", label: "[02] NOTAS FISCAIS", icon: FileText, group: "Módulos do Sistema", adminOnly: false },
+  { id: "baixas", label: "[03] BAIXAS", icon: ArrowDownCircle, group: "Módulos do Sistema", adminOnly: false },
+  { id: "relatorios", label: "[04] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema", adminOnly: true },
+  { id: "funcionarios", label: "[05] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal", adminOnly: true },
+  { id: "admin", label: "[06] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal", adminOnly: true },
+  { id: "config", label: "[07] CONFIGURAÇÕES", icon: Settings, group: "Sistema", adminOnly: true },
 ];
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
+  const { isAdmin } = useUserRole();
+  const [pending, setPending] = useState(0);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const load = async () => {
+      const { count } = await supabase
+        .from("admin_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPending(count ?? 0);
+    };
+    load();
+    const ch = supabase
+      .channel("sidebar_admin_reqs")
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_requests" }, load)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [isAdmin]);
+
+  const menuItems = allItems.filter((i) => !i.adminOnly || isAdmin);
   const groups = [...new Set(menuItems.map((item) => item.group))];
 
   return (
@@ -51,7 +77,12 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
                     <item.icon className="h-4 w-4" />
                     {item.label}
                   </span>
-                  {activeTab === item.id && (
+                  {item.id === "admin" && pending > 0 && (
+                    <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums">
+                      {pending}
+                    </span>
+                  )}
+                  {activeTab === item.id && item.id !== "admin" && (
                     <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                   )}
                 </button>
