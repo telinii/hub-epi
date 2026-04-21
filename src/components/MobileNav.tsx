@@ -1,23 +1,26 @@
 import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3 } from "lucide-react";
 import { useState } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface MobileNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const menuItems = [
-  { id: "estoque", label: "ESTOQUE", icon: Package },
-  { id: "notas", label: "NOTAS FISCAIS", icon: FileText },
-  { id: "baixas", label: "BAIXAS", icon: ArrowDownCircle },
-  { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3 },
-  { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users },
-  { id: "admin", label: "ADMIN", icon: Shield },
-  { id: "config", label: "CONFIG", icon: Settings },
+const allItems = [
+  { id: "estoque", label: "ESTOQUE", icon: Package, adminOnly: false },
+  { id: "notas", label: "NOTAS FISCAIS", icon: FileText, adminOnly: false },
+  { id: "baixas", label: "BAIXAS", icon: ArrowDownCircle, adminOnly: false },
+  { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3, adminOnly: true },
+  { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users, adminOnly: true },
+  { id: "admin", label: "ADMIN", icon: Shield, adminOnly: true },
+  { id: "config", label: "CONFIG", icon: Settings, adminOnly: true },
 ];
 
 export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const { isAdmin } = useUserRole();
+  const menuItems = allItems.filter((i) => !i.adminOnly || isAdmin);
 
   return (
     <div className="md:hidden border-b border-border bg-secondary">
