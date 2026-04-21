@@ -146,14 +146,12 @@ export function InventoryTab() {
           <option value="ca">C.A.</option>
           <option value="status">STATUS</option>
         </select>
-        {isAdmin && (
-          <button
-            onClick={() => { setEditingItem(null); setShowForm(true); }}
-            className="bg-primary text-primary-foreground px-5 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
-          >
-            <Plus className="h-4 w-4 inline mr-1" /> NOVO EPI
-          </button>
-        )}
+        <button
+          onClick={() => { setEditingItem(null); setShowForm(true); }}
+          className="bg-primary text-primary-foreground px-5 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
+        >
+          <Plus className="h-4 w-4 inline mr-1" /> NOVO EPI
+        </button>
         <button
           onClick={exportPDF}
           className="bg-secondary text-foreground border border-border px-5 py-3 text-sm font-bold tracking-widest uppercase hover:border-foreground transition-colors"
