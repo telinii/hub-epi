@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export function InvoicesTab() {
   const [showForm, setShowForm] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: invoices = [], isLoading } = useQuery({
