@@ -14,6 +14,7 @@ export function InventoryTab() {
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingItem, setViewingItem] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: equipment = [], isLoading } = useQuery({
@@ -194,7 +195,14 @@ export function InventoryTab() {
                     }`}
                   >
                     <td className="p-4 text-primary">{item.code}</td>
-                    <td className="p-4 font-display font-medium tracking-wide">{item.name}</td>
+                    <td className="p-4 font-display font-medium tracking-wide">
+                      <button
+                        onClick={() => setViewingItem(item)}
+                        className="hover:text-primary transition-colors text-left"
+                      >
+                        {item.name}
+                      </button>
+                    </td>
                     <td className="p-4 text-muted-foreground">{item.ca}</td>
                     <td className={`p-4 text-right font-bold ${item.quantity <= item.min_quantity ? "text-destructive" : ""}`}>
                       {item.quantity}
@@ -233,6 +241,96 @@ export function InventoryTab() {
           onClose={() => setShowForm(false)}
         />
       )}
+
+      {viewingItem && (() => {
+        const status = getStatus(viewingItem.quantity, viewingItem.min_quantity);
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setViewingItem(null)}
+          >
+            <div
+              className="bg-secondary border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 border-b border-border">
+                <h3 className="font-display text-xl font-bold uppercase tracking-tight text-foreground">
+                  Detalhes do EPI
+                </h3>
+                <button
+                  onClick={() => setViewingItem(null)}
+                  className="text-muted-foreground hover:text-primary text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="p-5 flex flex-col gap-4">
+                <div>
+                  <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">Nome do Equipamento</span>
+                  <span className="font-display font-medium text-foreground text-lg">{viewingItem.name}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">Código</span>
+                    <span className="text-primary font-bold tabular-nums">{viewingItem.code}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">C.A.</span>
+                    <span className="text-foreground tabular-nums">{viewingItem.ca}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">Qtd. Atual</span>
+                    <span className={`font-bold text-lg tabular-nums ${viewingItem.quantity <= viewingItem.min_quantity ? "text-destructive" : "text-foreground"}`}>
+                      {viewingItem.quantity}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">Qtd. Mín.</span>
+                    <span className="text-foreground font-bold text-lg tabular-nums">{viewingItem.min_quantity}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-1">Status</span>
+                    <span className={`inline-block px-2 py-1 border text-[10px] uppercase tracking-widest ${status.className}`}>
+                      {status.label}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4">
+                  <span className="text-[10px] tracking-widest uppercase text-muted-foreground block mb-2">Descrição</span>
+                  <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
+                    {viewingItem.description || <span className="text-muted-foreground italic">Sem descrição cadastrada</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-border flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setEditingItem(viewingItem);
+                    setViewingItem(null);
+                    setShowForm(true);
+                  }}
+                  className="bg-primary text-primary-foreground px-5 py-2 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => setViewingItem(null)}
+                  className="bg-accent text-foreground border border-border px-5 py-2 text-sm font-bold tracking-widest uppercase hover:border-foreground transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
