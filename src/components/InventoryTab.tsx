@@ -14,6 +14,7 @@ export function InventoryTab() {
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [viewingItem, setViewingItem] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: equipment = [], isLoading } = useQuery({
