@@ -81,3 +81,26 @@
     font-family: var(--font-mono);
   }
 }
+
+/* Animated safety wallpaper background */
+@keyframes scroll-up {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 -768px;
+  }
+}
+
+.safety-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 480px auto;
+  opacity: 0.05;
+  animation: scroll-up 120s linear infinite;
+  will-change: background-position;
+}
+
