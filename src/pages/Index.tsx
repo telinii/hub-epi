@@ -9,12 +9,14 @@ import { ReportsTab } from "@/components/ReportsTab";
 import { AdminTab } from "@/components/AdminTab";
 import { ConfigTab } from "@/components/ConfigTab";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { LogOut } from "lucide-react";
 import safetyWallpaper from "@/assets/safety-wallpaper.png";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("estoque");
   const { signOut, user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   const renderTab = () => {
     switch (activeTab) {
@@ -40,6 +42,13 @@ const Index = () => {
       <main className="flex-1 flex flex-col min-w-0 relative z-10">
         <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex items-center justify-end gap-3 px-4 sm:px-8 pt-4">
+          <span
+            className={`text-[10px] font-bold tracking-widest px-2 py-0.5 border ${
+              isAdmin ? "text-primary border-primary bg-primary/10" : "text-muted-foreground border-border"
+            }`}
+          >
+            {isAdmin ? "ADMIN" : "USUÁRIO"}
+          </span>
           <span className="text-xs text-muted-foreground tracking-widest">{user?.email}</span>
           <button
             onClick={signOut}
