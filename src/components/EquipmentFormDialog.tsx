@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,8 @@ interface Props {
   item?: any;
   onClose: () => void;
 }
+
+type FieldKey = "code" | "name" | "ca" | "description";
 
 export function EquipmentFormDialog({ item, onClose }: Props) {
   const [form, setForm] = useState({
@@ -18,7 +20,67 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
     quantity: item?.quantity?.toString() || "0",
     min_quantity: item?.min_quantity?.toString() || "0",
   });
+  const [activeField, setActiveField] = useState<FieldKey | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // Busca todos os EPIs já cadastrados para alimentar o autocomplete
+  const { data: allEquipment = [] } = useQuery({
+    queryKey: ["equipment"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("equipment").select("code, name, ca, description");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Gera sugestões únicas para o campo ativo
+  const suggestions = useMemo(() => {
+    if (!activeField || activeField === "code") return [];
+    const value = (form[activeField] || "").toLowerCase().trim();
+    if (value.length < 1) return [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const eq of allEquipment) {
+      const v = (eq as any)[activeField];
+      if (!v) continue;
+      const key = v.toLowerCase();
+      if (key === value) continue;
+      if (key.includes(value) && !seen.has(key)) {
+        seen.add(key);
+        result.push(v);
+        if (result.length >= 6) break;
+      }
+    }
+    return result;
+  }, [activeField, form, allEquipment]);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setActiveField(null);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const applySuggestion = (field: FieldKey, value: string) => {
+    // Procura o EPI completo correspondente para auto-preencher os outros campos
+    const match = allEquipment.find((eq: any) => (eq[field] || "").toLowerCase() === value.toLowerCase());
+    if (match) {
+      setForm((f) => ({
+        ...f,
+        name: f.name || (match as any).name || "",
+        ca: f.ca || (match as any).ca || "",
+        description: f.description || (match as any).description || "",
+        [field]: value,
+      }));
+    } else {
+      setForm((f) => ({ ...f, [field]: value }));
+    }
+    setActiveField(null);
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -55,9 +117,16 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
     mutation.mutate();
   };
 
+  const fields: { key: FieldKey; label: string; placeholder: string }[] = [
+    { key: "code", label: "CÓDIGO *", placeholder: "Ex: EPI-001" },
+    { key: "name", label: "NOME *", placeholder: "Ex: Capacete de Segurança" },
+    { key: "ca", label: "C.A. *", placeholder: "Ex: CA-12345" },
+    { key: "description", label: "DESCRIÇÃO", placeholder: "Descrição opcional" },
+  ];
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-secondary border border-border w-full max-w-md">
+      <div ref={containerRef} className="bg-secondary border border-border w-full max-w-md">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="font-display font-bold text-foreground uppercase tracking-widest text-sm">
             {item ? "EDITAR EPI" : "NOVO EPI"}
@@ -67,20 +136,36 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-3">
-          {[
-            { key: "code", label: "CÓDIGO *", placeholder: "Ex: EPI-001" },
-            { key: "name", label: "NOME *", placeholder: "Ex: Capacete de Segurança" },
-            { key: "ca", label: "C.A. *", placeholder: "Ex: CA-12345" },
-            { key: "description", label: "DESCRIÇÃO", placeholder: "Descrição opcional" },
-          ].map((f) => (
-            <div key={f.key}>
+          {fields.map((f) => (
+            <div key={f.key} className="relative">
               <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">{f.label}</label>
               <input
-                value={(form as any)[f.key]}
-                onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                value={form[f.key]}
+                onChange={(e) => {
+                  setForm({ ...form, [f.key]: e.target.value });
+                  setActiveField(f.key);
+                }}
+                onFocus={() => setActiveField(f.key)}
                 placeholder={f.placeholder}
+                autoComplete="off"
                 className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground/40"
               />
+              {activeField === f.key && suggestions.length > 0 && (
+                <ul className="absolute z-10 left-0 right-0 top-full mt-1 bg-background border border-primary/50 max-h-48 overflow-y-auto shadow-lg">
+                  {suggestions.map((s) => (
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applySuggestion(f.key, s)}
+                        className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
           <div className="grid grid-cols-2 gap-3">
@@ -90,6 +175,7 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
                 type="number"
                 value={form.quantity}
                 onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                onFocus={() => setActiveField(null)}
                 className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
               />
             </div>
@@ -99,6 +185,7 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
                 type="number"
                 value={form.min_quantity}
                 onChange={(e) => setForm({ ...form, min_quantity: e.target.value })}
+                onFocus={() => setActiveField(null)}
                 className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
               />
             </div>
