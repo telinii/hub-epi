@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export function InvoicesTab() {
   const [showForm, setShowForm] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data: invoices = [], isLoading } = useQuery({
@@ -173,7 +174,11 @@ export function InvoicesTab() {
               <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Nenhuma nota fiscal registrada</td></tr>
             ) : (
               invoices.map((inv: any) => (
-                <tr key={inv.id} className="hover:bg-accent/50 border-b border-border/50">
+                <tr
+                  key={inv.id}
+                  onClick={() => setSelectedInvoice(inv)}
+                  className="hover:bg-accent/50 border-b border-border/50 cursor-pointer transition-colors"
+                >
                   <td className="p-4 text-primary">{inv.invoice_number}</td>
                   <td className="p-4 font-display font-medium">{inv.supplier}</td>
                   <td className="p-4 text-muted-foreground">{new Date(inv.date).toLocaleDateString("pt-BR")}</td>
@@ -184,6 +189,104 @@ export function InvoicesTab() {
           </tbody>
         </table>
       </div>
+
+      {selectedInvoice && (
+        <div
+          onClick={() => setSelectedInvoice(null)}
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-secondary border border-border w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-secondary">
+              <h3 className="font-display font-bold text-foreground uppercase tracking-widest text-sm">
+                DETALHES DA NOTA FISCAL
+              </h3>
+              <button
+                onClick={() => setSelectedInvoice(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-1">Nº NOTA</div>
+                  <div className="text-primary font-display font-bold">{selectedInvoice.invoice_number}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-1">FORNECEDOR</div>
+                  <div className="text-foreground font-display font-medium">{selectedInvoice.supplier}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-1">DATA DA NOTA</div>
+                  <div className="text-foreground">{new Date(selectedInvoice.date).toLocaleDateString("pt-BR")}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-1">ENTRADA NO SISTEMA</div>
+                  <div className="text-foreground text-sm">
+                    {new Date(selectedInvoice.created_at).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {selectedInvoice.notes && (
+                <div className="border-t border-border pt-4">
+                  <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-1">OBSERVAÇÃO</div>
+                  <div className="text-foreground text-sm whitespace-pre-wrap">{selectedInvoice.notes}</div>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-4">
+                <div className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase mb-3">
+                  ITENS DA NOTA ({selectedInvoice.invoice_items?.length || 0})
+                </div>
+                <div className="border border-border overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead>
+                      <tr className="bg-accent text-[11px] uppercase tracking-widest text-muted-foreground">
+                        <th className="p-3 border-b border-border font-normal">Código</th>
+                        <th className="p-3 border-b border-border font-normal">Equipamento</th>
+                        <th className="p-3 border-b border-border font-normal">C.A</th>
+                        <th className="p-3 border-b border-border font-normal text-right">Qtd</th>
+                        <th className="p-3 border-b border-border font-normal text-right">Valor Unit.</th>
+                        <th className="p-3 border-b border-border font-normal text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-foreground">
+                      {selectedInvoice.invoice_items?.map((item: any) => (
+                        <tr key={item.id} className="border-b border-border/50">
+                          <td className="p-3 text-primary">{item.equipment?.code || "—"}</td>
+                          <td className="p-3 font-display font-medium">{item.equipment?.name || "—"}</td>
+                          <td className="p-3 text-muted-foreground">{item.equipment?.ca || "—"}</td>
+                          <td className="p-3 text-right">{item.quantity}</td>
+                          <td className="p-3 text-right text-muted-foreground">
+                            {item.unit_price ? `R$ ${Number(item.unit_price).toFixed(2)}` : "—"}
+                          </td>
+                          <td className="p-3 text-right">
+                            {item.unit_price
+                              ? `R$ ${(Number(item.unit_price) * item.quantity).toFixed(2)}`
+                              : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
