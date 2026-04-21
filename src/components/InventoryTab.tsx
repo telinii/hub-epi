@@ -7,8 +7,11 @@ import { EquipmentFormDialog } from "./EquipmentFormDialog";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+type SortKey = "quantity" | "name" | "ca" | "status";
+
 export function InventoryTab() {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortKey>("name");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const queryClient = useQueryClient();
@@ -37,19 +40,34 @@ export function InventoryTab() {
     onError: () => toast.error("Erro ao remover equipamento"),
   });
 
-  const filtered = equipment.filter(
-    (e) =>
-      e.name.toLowerCase().includes(search.toLowerCase()) ||
-      e.code.toLowerCase().includes(search.toLowerCase()) ||
-      e.ca.toLowerCase().includes(search.toLowerCase())
-  );
-
   const getStatus = (qty: number, min: number) => {
-    if (qty <= 0) return { label: "SEM ESTOQUE", className: "bg-destructive/20 text-destructive border-destructive" };
-    if (qty <= min) return { label: "CRÍTICO", className: "bg-destructive/20 text-destructive border-destructive animate-pulse" };
-    if (qty <= min * 1.5) return { label: "ESTOQUE BAIXO", className: "bg-primary/10 text-primary border-primary/50" };
-    return { label: "ADEQUADO", className: "bg-success/10 text-success border-success/30" };
+    if (qty <= 0) return { label: "SEM ESTOQUE", className: "bg-destructive/20 text-destructive border-destructive", rank: 0 };
+    if (qty <= min) return { label: "CRÍTICO", className: "bg-destructive/20 text-destructive border-destructive animate-pulse", rank: 1 };
+    if (qty <= min * 1.5) return { label: "ESTOQUE BAIXO", className: "bg-primary/10 text-primary border-primary/50", rank: 2 };
+    return { label: "ADEQUADO", className: "bg-success/10 text-success border-success/30", rank: 3 };
   };
+
+  const filtered = equipment
+    .filter(
+      (e) =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        e.code.toLowerCase().includes(search.toLowerCase()) ||
+        e.ca.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "quantity":
+          return b.quantity - a.quantity;
+        case "name":
+          return a.name.localeCompare(b.name, "pt-BR");
+        case "ca":
+          return a.ca.localeCompare(b.ca, "pt-BR", { numeric: true });
+        case "status":
+          return getStatus(a.quantity, a.min_quantity).rank - getStatus(b.quantity, b.min_quantity).rank;
+        default:
+          return 0;
+      }
+    });
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -115,6 +133,16 @@ export function InventoryTab() {
             className="w-full bg-accent border border-border text-primary text-sm px-10 py-3 focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/50 tracking-widest uppercase"
           />
         </div>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortKey)}
+          className="bg-accent border border-border text-foreground text-xs px-4 py-3 focus:outline-none focus:border-primary tracking-widest uppercase font-bold cursor-pointer"
+        >
+          <option value="name">A-Z (NOME)</option>
+          <option value="quantity">QUANTIDADE</option>
+          <option value="ca">C.A.</option>
+          <option value="status">STATUS</option>
+        </select>
         <button
           onClick={() => { setEditingItem(null); setShowForm(true); }}
           className="bg-primary text-primary-foreground px-5 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
