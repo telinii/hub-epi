@@ -26,7 +26,7 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
 
   // Busca todos os EPIs já cadastrados para alimentar o autocomplete
   const { data: allEquipment = [] } = useQuery({
-    queryKey: ["equipment"],
+    queryKey: ["equipment-autocomplete"],
     queryFn: async () => {
       const { data, error } = await supabase.from("equipment").select("code, name, ca, description");
       if (error) throw error;
