@@ -30,9 +30,14 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background relative">
+      <div
+        className="safety-wallpaper"
+        style={{ backgroundImage: `url(${safetyWallpaper})` }}
+        aria-hidden="true"
+      />
       <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10">
         <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex items-center justify-end gap-3 px-4 sm:px-8 pt-4">
           <span className="text-xs text-muted-foreground tracking-widest">{user?.email}</span>
