@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Plus, FileDown, Trash2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { EquipmentFormDialog } from "./EquipmentFormDialog";
+import { useUserRole } from "@/hooks/useUserRole";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 type SortKey = "quantity" | "name" | "ca" | "status";
 
 export function InventoryTab() {
+  const { isAdmin } = useUserRole();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [showForm, setShowForm] = useState(false);
@@ -144,12 +146,14 @@ export function InventoryTab() {
           <option value="ca">C.A.</option>
           <option value="status">STATUS</option>
         </select>
-        <button
-          onClick={() => { setEditingItem(null); setShowForm(true); }}
-          className="bg-primary text-primary-foreground px-5 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-4 w-4 inline mr-1" /> NOVO EPI
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => { setEditingItem(null); setShowForm(true); }}
+            className="bg-primary text-primary-foreground px-5 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-4 w-4 inline mr-1" /> NOVO EPI
+          </button>
+        )}
         <button
           onClick={exportPDF}
           className="bg-secondary text-foreground border border-border px-5 py-3 text-sm font-bold tracking-widest uppercase hover:border-foreground transition-colors"
@@ -214,18 +218,24 @@ export function InventoryTab() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button
-                        onClick={() => { setEditingItem(item); setShowForm(true); }}
-                        className="text-muted-foreground hover:text-primary mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Edit2 className="h-4 w-4 inline" />
-                      </button>
-                      <button
-                        onClick={() => deleteMutation.mutate(item.id)}
-                        className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="h-4 w-4 inline" />
-                      </button>
+                      {isAdmin ? (
+                        <>
+                          <button
+                            onClick={() => { setEditingItem(item); setShowForm(true); }}
+                            className="text-muted-foreground hover:text-primary mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Edit2 className="h-4 w-4 inline" />
+                          </button>
+                          <button
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-4 w-4 inline" />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-[10px] tracking-widest">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -310,16 +320,18 @@ export function InventoryTab() {
               </div>
 
               <div className="p-5 border-t border-border flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setEditingItem(viewingItem);
-                    setViewingItem(null);
-                    setShowForm(true);
-                  }}
-                  className="bg-primary text-primary-foreground px-5 py-2 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
-                >
-                  Editar
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      setEditingItem(viewingItem);
+                      setViewingItem(null);
+                      setShowForm(true);
+                    }}
+                    className="bg-primary text-primary-foreground px-5 py-2 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity"
+                  >
+                    Editar
+                  </button>
+                )}
                 <button
                   onClick={() => setViewingItem(null)}
                   className="bg-accent text-foreground border border-border px-5 py-2 text-sm font-bold tracking-widest uppercase hover:border-foreground transition-colors"
