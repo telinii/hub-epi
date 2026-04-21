@@ -10,6 +10,7 @@ import { AdminTab } from "@/components/AdminTab";
 import { ConfigTab } from "@/components/ConfigTab";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
+import safetyWallpaper from "@/assets/safety-wallpaper.png";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("estoque");
