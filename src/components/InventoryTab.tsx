@@ -195,7 +195,14 @@ export function InventoryTab() {
                     }`}
                   >
                     <td className="p-4 text-primary">{item.code}</td>
-                    <td className="p-4 font-display font-medium tracking-wide">{item.name}</td>
+                    <td className="p-4 font-display font-medium tracking-wide">
+                      <button
+                        onClick={() => setViewingItem(item)}
+                        className="hover:text-primary transition-colors text-left"
+                      >
+                        {item.name}
+                      </button>
+                    </td>
                     <td className="p-4 text-muted-foreground">{item.ca}</td>
                     <td className={`p-4 text-right font-bold ${item.quantity <= item.min_quantity ? "text-destructive" : ""}`}>
                       {item.quantity}
