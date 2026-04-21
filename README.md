@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# SISTEMA DE CONTROLE DE ESTOQUE DE EPIs
 
-TODO: Document your project here
+TODO: Melhorias em progresso
