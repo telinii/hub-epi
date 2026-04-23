@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowDownCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowDownCircle, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 type CartItem = { equipment_id: string; quantity: number };
 
