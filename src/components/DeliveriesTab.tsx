@@ -16,6 +16,8 @@ export function DeliveriesTab() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickEquipment, setPickEquipment] = useState("");
   const [pickQty, setPickQty] = useState("1");
+  const [employeeOpen, setEmployeeOpen] = useState(false);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment"],
