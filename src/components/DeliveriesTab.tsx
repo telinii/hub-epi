@@ -132,16 +132,44 @@ export function DeliveriesTab() {
 
         <div>
           <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
-          <select
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
-          >
-            <option value="">Selecionar funcionário</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>{emp.registration} - {emp.name}</option>
-            ))}
-          </select>
+          <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                role="combobox"
+                aria-expanded={employeeOpen}
+                className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary flex items-center justify-between hover:border-primary/50 transition-colors"
+              >
+                <span className={cn("truncate", !employeeId && "text-muted-foreground/60")}>
+                  {employeeId ? employees.find((e) => e.id === employeeId)?.name : "Selecionar funcionário"}
+                </span>
+                <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width] bg-popover border-border" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar funcionário..." className="h-10" />
+                <CommandList>
+                  <CommandEmpty>Nenhum funcionário encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    {employees.map((emp) => (
+                      <CommandItem
+                        key={emp.id}
+                        value={emp.name}
+                        onSelect={() => {
+                          setEmployeeId(emp.id);
+                          setEmployeeOpen(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", employeeId === emp.id ? "opacity-100" : "opacity-0")} />
+                        {emp.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="border border-border bg-background/50 p-4 flex flex-col gap-3">
