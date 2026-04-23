@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowDownCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowDownCircle, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 type CartItem = { equipment_id: string; quantity: number };
 
@@ -13,6 +16,8 @@ export function DeliveriesTab() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pickEquipment, setPickEquipment] = useState("");
   const [pickQty, setPickQty] = useState("1");
+  const [employeeOpen, setEmployeeOpen] = useState(false);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment"],
@@ -127,31 +132,93 @@ export function DeliveriesTab() {
 
         <div>
           <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
-          <select
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
-          >
-            <option value="">Selecionar funcionário</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>{emp.registration} - {emp.name}</option>
-            ))}
-          </select>
+          <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                role="combobox"
+                aria-expanded={employeeOpen}
+                className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary flex items-center justify-between hover:border-primary/50 transition-colors"
+              >
+                <span className={cn("truncate", !employeeId && "text-muted-foreground/60")}>
+                  {employeeId ? employees.find((e) => e.id === employeeId)?.name : "Selecionar funcionário"}
+                </span>
+                <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width] bg-popover border-border" align="start">
+              <Command>
+                <CommandInput placeholder="Buscar funcionário..." className="h-10" />
+                <CommandList>
+                  <CommandEmpty>Nenhum funcionário encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    {employees.map((emp) => (
+                      <CommandItem
+                        key={emp.id}
+                        value={emp.name}
+                        onSelect={() => {
+                          setEmployeeId(emp.id);
+                          setEmployeeOpen(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", employeeId === emp.id ? "opacity-100" : "opacity-0")} />
+                        {emp.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="border border-border bg-background/50 p-4 flex flex-col gap-3">
           <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">ADICIONAR EPI À BAIXA</span>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-3">
-            <select
-              value={pickEquipment}
-              onChange={(e) => setPickEquipment(e.target.value)}
-              className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">Selecionar EPI</option>
-              {equipment.map((eq) => (
-                <option key={eq.id} value={eq.id}>{eq.code} - {eq.name} (Estoque: {eq.quantity})</option>
-              ))}
-            </select>
+            <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="combobox"
+                  aria-expanded={equipmentOpen}
+                  className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary flex items-center justify-between hover:border-primary/50 transition-colors"
+                >
+                  <span className={cn("truncate", !pickEquipment && "text-muted-foreground/60")}>
+                    {pickEquipment
+                      ? (() => {
+                          const eq = equipment.find((e) => e.id === pickEquipment);
+                          return eq ? `${eq.name} — C.A. ${eq.ca}` : "Selecionar EPI";
+                        })()
+                      : "Selecionar EPI"}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[--radix-popover-trigger-width] bg-popover border-border" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar EPI..." className="h-10" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum EPI encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {equipment.map((eq) => (
+                        <CommandItem
+                          key={eq.id}
+                          value={`${eq.name} ${eq.ca}`}
+                          onSelect={() => {
+                            setPickEquipment(eq.id);
+                            setEquipmentOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", pickEquipment === eq.id ? "opacity-100" : "opacity-0")} />
+                          <span className="flex-1 truncate">{eq.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">C.A. {eq.ca}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <input
               type="number"
               min="1"
