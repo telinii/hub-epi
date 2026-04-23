@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowDownCircle } from "lucide-react";
+import { ArrowDownCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+type CartItem = { equipment_id: string; quantity: number };
 
 export function DeliveriesTab() {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ equipment_id: "", employee_id: "", quantity: "1", notes: "" });
+  const [employeeId, setEmployeeId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [pickEquipment, setPickEquipment] = useState("");
+  const [pickQty, setPickQty] = useState("1");
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment"],
@@ -39,36 +45,73 @@ export function DeliveriesTab() {
     },
   });
 
+  const addToCart = () => {
+    if (!pickEquipment) return toast.error("Selecione um EPI");
+    const qty = parseInt(pickQty) || 1;
+    if (qty < 1) return toast.error("Quantidade inválida");
+    const eq = equipment.find((e) => e.id === pickEquipment);
+    if (!eq) return;
+
+    const existing = cart.find((c) => c.equipment_id === pickEquipment);
+    const totalRequested = (existing?.quantity || 0) + qty;
+    if (eq.quantity < totalRequested) return toast.error(`Estoque insuficiente para ${eq.name}`);
+
+    if (existing) {
+      setCart(cart.map((c) => (c.equipment_id === pickEquipment ? { ...c, quantity: totalRequested } : c)));
+    } else {
+      setCart([...cart, { equipment_id: pickEquipment, quantity: qty }]);
+    }
+    setPickEquipment("");
+    setPickQty("1");
+  };
+
+  const removeFromCart = (id: string) => setCart(cart.filter((c) => c.equipment_id !== id));
+
   const deliverMutation = useMutation({
     mutationFn: async () => {
-      if (!form.equipment_id || !form.employee_id) throw new Error("Selecione EPI e funcionário");
-      const qty = parseInt(form.quantity) || 1;
-      const eq = equipment.find((e) => e.id === form.equipment_id);
-      if (!eq) throw new Error("Equipamento não encontrado");
-      if (eq.quantity < qty) throw new Error("Estoque insuficiente");
+      if (!employeeId) throw new Error("Selecione um funcionário");
+      if (cart.length === 0) throw new Error("Adicione pelo menos um EPI");
 
-      const { error: delError } = await supabase.from("deliveries").insert({
-        equipment_id: form.equipment_id,
-        employee_id: form.employee_id,
-        quantity: qty,
-        notes: form.notes || null,
-      });
+      // Validate stock again
+      for (const item of cart) {
+        const eq = equipment.find((e) => e.id === item.equipment_id);
+        if (!eq) throw new Error("Equipamento não encontrado");
+        if (eq.quantity < item.quantity) throw new Error(`Estoque insuficiente para ${eq.name}`);
+      }
+
+      // Insert all deliveries
+      const { error: delError } = await supabase.from("deliveries").insert(
+        cart.map((item) => ({
+          equipment_id: item.equipment_id,
+          employee_id: employeeId,
+          quantity: item.quantity,
+          notes: notes || null,
+        }))
+      );
       if (delError) throw delError;
 
-      const { error: upError } = await supabase
-        .from("equipment")
-        .update({ quantity: eq.quantity - qty })
-        .eq("id", eq.id);
-      if (upError) throw upError;
+      // Update equipment quantities
+      for (const item of cart) {
+        const eq = equipment.find((e) => e.id === item.equipment_id)!;
+        const { error: upError } = await supabase
+          .from("equipment")
+          .update({ quantity: eq.quantity - item.quantity })
+          .eq("id", eq.id);
+        if (upError) throw upError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveries"] });
       queryClient.invalidateQueries({ queryKey: ["equipment"] });
-      setForm({ equipment_id: "", employee_id: "", quantity: "1", notes: "" });
+      setEmployeeId("");
+      setNotes("");
+      setCart([]);
       toast.success("Baixa registrada com sucesso");
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const getEquipment = (id: string) => equipment.find((e) => e.id === id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,25 +125,26 @@ export function DeliveriesTab() {
           <h3 className="font-display font-bold text-foreground uppercase tracking-widest text-sm">REGISTRAR BAIXA</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
+        <div>
+          <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
+          <select
+            value={employeeId}
+            onChange={(e) => setEmployeeId(e.target.value)}
+            className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+          >
+            <option value="">Selecionar funcionário</option>
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.id}>{emp.registration} - {emp.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="border border-border bg-background/50 p-4 flex flex-col gap-3">
+          <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">ADICIONAR EPI À BAIXA</span>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-3">
             <select
-              value={form.employee_id}
-              onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-              className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
-            >
-              <option value="">Selecionar funcionário</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>{emp.registration} - {emp.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">EPI *</label>
-            <select
-              value={form.equipment_id}
-              onChange={(e) => setForm({ ...form, equipment_id: e.target.value })}
+              value={pickEquipment}
+              onChange={(e) => setPickEquipment(e.target.value)}
               className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
             >
               <option value="">Selecionar EPI</option>
@@ -108,37 +152,68 @@ export function DeliveriesTab() {
                 <option key={eq.id} value={eq.id}>{eq.code} - {eq.name} (Estoque: {eq.quantity})</option>
               ))}
             </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">QUANTIDADE</label>
             <input
               type="number"
               min="1"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              value={pickQty}
+              onChange={(e) => setPickQty(e.target.value)}
+              placeholder="Qtd"
               className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
             />
+            <button
+              type="button"
+              onClick={addToCart}
+              className="bg-accent text-foreground border border-border px-4 py-2.5 text-xs font-bold tracking-widest uppercase hover:border-primary hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" /> ADICIONAR
+            </button>
           </div>
-          <div>
-            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">OBSERVAÇÃO</label>
-            <input
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Opcional"
-              className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground/40"
-            />
-          </div>
+
+          {cart.length > 0 && (
+            <div className="border border-border divide-y divide-border">
+              {cart.map((item) => {
+                const eq = getEquipment(item.equipment_id);
+                return (
+                  <div key={item.equipment_id} className="flex items-center justify-between p-3 bg-secondary">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm text-foreground font-medium truncate">
+                        <span className="text-primary">{eq?.code}</span> - {eq?.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tracking-widest uppercase">C.A. {eq?.ca}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold tabular-nums text-foreground">×{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.equipment_id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">OBSERVAÇÃO</label>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Opcional (aplicada a todos os itens)"
+            className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground/40"
+          />
         </div>
 
         <button
           onClick={() => deliverMutation.mutate()}
-          disabled={deliverMutation.isPending}
-          className="bg-primary text-primary-foreground px-6 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity disabled:opacity-50 self-start"
+          disabled={deliverMutation.isPending || !employeeId || cart.length === 0}
+          className="bg-primary text-primary-foreground px-6 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed self-start"
         >
-          {deliverMutation.isPending ? "PROCESSANDO..." : "PROCESSAR BAIXA"}
+          {deliverMutation.isPending ? "PROCESSANDO..." : `PROCESSAR BAIXA${cart.length > 0 ? ` (${cart.length} ITEM${cart.length > 1 ? "S" : ""})` : ""}`}
         </button>
       </div>
 
