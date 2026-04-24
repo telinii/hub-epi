@@ -19,6 +19,8 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
     description: item?.description || "",
     quantity: item?.quantity?.toString() || "0",
     min_quantity: item?.min_quantity?.toString() || "0",
+    ca_expiry_date: item?.ca_expiry_date || "",
+    ca_status_note: item?.ca_status_note || "",
   });
   const [activeField, setActiveField] = useState<FieldKey | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,6 +93,8 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
         description: form.description.trim() || null,
         quantity: parseInt(form.quantity) || 0,
         min_quantity: parseInt(form.min_quantity) || 0,
+        ca_expiry_date: form.ca_expiry_date || null,
+        ca_status_note: form.ca_status_note.trim() || null,
       };
       if (item) {
         const { error } = await supabase.from("equipment").update(payload).eq("id", item.id);
@@ -187,6 +191,28 @@ export function EquipmentFormDialog({ item, onClose }: Props) {
                 onChange={(e) => setForm({ ...form, min_quantity: e.target.value })}
                 onFocus={() => setActiveField(null)}
                 className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">VALIDADE C.A.</label>
+              <input
+                type="date"
+                value={form.ca_expiry_date}
+                onChange={(e) => setForm({ ...form, ca_expiry_date: e.target.value })}
+                onFocus={() => setActiveField(null)}
+                className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">NOTA C.A.</label>
+              <input
+                value={form.ca_status_note}
+                onChange={(e) => setForm({ ...form, ca_status_note: e.target.value })}
+                onFocus={() => setActiveField(null)}
+                placeholder="Ex: sem C.A."
+                className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary placeholder:text-muted-foreground/40"
               />
             </div>
           </div>

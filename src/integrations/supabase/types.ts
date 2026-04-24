@@ -170,6 +170,8 @@ export type Database = {
       equipment: {
         Row: {
           ca: string
+          ca_expiry_date: string | null
+          ca_status_note: string | null
           code: string
           created_at: string
           description: string | null
@@ -181,6 +183,8 @@ export type Database = {
         }
         Insert: {
           ca: string
+          ca_expiry_date?: string | null
+          ca_status_note?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -192,6 +196,8 @@ export type Database = {
         }
         Update: {
           ca?: string
+          ca_expiry_date?: string | null
+          ca_status_note?: string | null
           code?: string
           created_at?: string
           description?: string | null
