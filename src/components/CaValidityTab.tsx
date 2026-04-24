@@ -353,13 +353,23 @@ export function CaValidityTab() {
                     <td className="p-4 text-muted-foreground text-xs max-w-[200px] truncate">{eq.ca_status_note || "—"}</td>
                     {isAdmin && (
                       <td className="p-4 text-right">
-                        <button
-                          onClick={() => openEdit(eq)}
-                          className="text-muted-foreground hover:text-primary transition-colors p-1"
-                          title="Editar validade"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => lookupOneMutation.mutate(eq)}
+                            disabled={lookupLoadingId === eq.id || !/^\d+$/.test(String(eq.ca || "").trim())}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={/^\d+$/.test(String(eq.ca || "").trim()) ? "Buscar validade na internet" : "C.A. não numérico"}
+                          >
+                            <RefreshCw className={cn("h-4 w-4", lookupLoadingId === eq.id && "animate-spin")} />
+                          </button>
+                          <button
+                            onClick={() => openEdit(eq)}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1"
+                            title="Editar validade"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
