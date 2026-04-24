@@ -1,16 +1,34 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowDownCircle, Plus, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowDownCircle, Plus, Trash2, Check, ChevronsUpDown, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type CartItem = { equipment_id: string; quantity: number };
 
+// Format date as "YYYY-MM-DDTHH:mm" for datetime-local input
+const toLocalInput = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export function DeliveriesTab() {
   const queryClient = useQueryClient();
+  const { isAdmin } = useUserRole();
   const [employeeId, setEmployeeId] = useState("");
   const [notes, setNotes] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -18,6 +36,12 @@ export function DeliveriesTab() {
   const [pickQty, setPickQty] = useState("1");
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const [equipmentOpen, setEquipmentOpen] = useState(false);
+  const [deliveredAt, setDeliveredAt] = useState(toLocalInput(new Date()));
+
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [deleting, setDeleting] = useState<any | null>(null);
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["equipment"],
@@ -77,25 +101,25 @@ export function DeliveriesTab() {
       if (!employeeId) throw new Error("Selecione um funcionário");
       if (cart.length === 0) throw new Error("Adicione pelo menos um EPI");
 
-      // Validate stock again
       for (const item of cart) {
         const eq = equipment.find((e) => e.id === item.equipment_id);
         if (!eq) throw new Error("Equipamento não encontrado");
         if (eq.quantity < item.quantity) throw new Error(`Estoque insuficiente para ${eq.name}`);
       }
 
-      // Insert all deliveries
+      const deliveredIso = deliveredAt ? new Date(deliveredAt).toISOString() : new Date().toISOString();
+
       const { error: delError } = await supabase.from("deliveries").insert(
         cart.map((item) => ({
           equipment_id: item.equipment_id,
           employee_id: employeeId,
           quantity: item.quantity,
           notes: notes || null,
+          delivered_at: deliveredIso,
         }))
       );
       if (delError) throw delError;
 
-      // Update equipment quantities
       for (const item of cart) {
         const eq = equipment.find((e) => e.id === item.equipment_id)!;
         const { error: upError } = await supabase
@@ -111,10 +135,59 @@ export function DeliveriesTab() {
       setEmployeeId("");
       setNotes("");
       setCart([]);
+      setDeliveredAt(toLocalInput(new Date()));
       toast.success("Baixa registrada com sucesso");
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const iso = editDate ? new Date(editDate).toISOString() : editing.delivered_at;
+      const { error } = await supabase
+        .from("deliveries")
+        .update({ delivered_at: iso, notes: editNotes || null })
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+      setEditing(null);
+      toast.success("Baixa atualizada");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao atualizar"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!deleting) return;
+      // Return stock first
+      const eq = equipment.find((e) => e.id === deleting.equipment_id);
+      if (eq) {
+        const { error: upError } = await supabase
+          .from("equipment")
+          .update({ quantity: eq.quantity + deleting.quantity })
+          .eq("id", eq.id);
+        if (upError) throw upError;
+      }
+      const { error } = await supabase.from("deliveries").delete().eq("id", deleting.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      setDeleting(null);
+      toast.success("Baixa excluída e estoque devolvido");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao excluir"),
+  });
+
+  const openEdit = (d: any) => {
+    setEditing(d);
+    setEditDate(toLocalInput(new Date(d.delivered_at)));
+    setEditNotes(d.notes || "");
+  };
 
   const getEquipment = (id: string) => equipment.find((e) => e.id === id);
 
@@ -130,46 +203,58 @@ export function DeliveriesTab() {
           <h3 className="font-display font-bold text-foreground uppercase tracking-widest text-sm">REGISTRAR BAIXA</h3>
         </div>
 
-        <div>
-          <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
-          <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                role="combobox"
-                aria-expanded={employeeOpen}
-                className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary flex items-center justify-between hover:border-primary/50 transition-colors"
-              >
-                <span className={cn("truncate", !employeeId && "text-muted-foreground/60")}>
-                  {employeeId ? employees.find((e) => e.id === employeeId)?.name : "Selecionar funcionário"}
-                </span>
-                <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="p-0 w-[--radix-popover-trigger-width] bg-popover border-border" align="start">
-              <Command>
-                <CommandInput placeholder="Buscar funcionário..." className="h-10" />
-                <CommandList>
-                  <CommandEmpty>Nenhum funcionário encontrado.</CommandEmpty>
-                  <CommandGroup>
-                    {employees.map((emp) => (
-                      <CommandItem
-                        key={emp.id}
-                        value={emp.name}
-                        onSelect={() => {
-                          setEmployeeId(emp.id);
-                          setEmployeeOpen(false);
-                        }}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", employeeId === emp.id ? "opacity-100" : "opacity-0")} />
-                        {emp.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">FUNCIONÁRIO *</label>
+            <Popover open={employeeOpen} onOpenChange={setEmployeeOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  role="combobox"
+                  aria-expanded={employeeOpen}
+                  className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary flex items-center justify-between hover:border-primary/50 transition-colors"
+                >
+                  <span className={cn("truncate", !employeeId && "text-muted-foreground/60")}>
+                    {employeeId ? employees.find((e) => e.id === employeeId)?.name : "Selecionar funcionário"}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[--radix-popover-trigger-width] bg-popover border-border" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar funcionário..." className="h-10" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum funcionário encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {employees.map((emp) => (
+                        <CommandItem
+                          key={emp.id}
+                          value={emp.name}
+                          onSelect={() => {
+                            setEmployeeId(emp.id);
+                            setEmployeeOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", employeeId === emp.id ? "opacity-100" : "opacity-0")} />
+                          {emp.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">DATA / HORA DA ENTREGA</label>
+            <input
+              type="datetime-local"
+              value={deliveredAt}
+              onChange={(e) => setDeliveredAt(e.target.value)}
+              className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+            />
+          </div>
         </div>
 
         <div className="border border-border bg-background/50 p-4 flex flex-col gap-3">
@@ -294,13 +379,14 @@ export function DeliveriesTab() {
               <th className="p-4 border-b border-border font-normal">C.A.</th>
               <th className="p-4 border-b border-border font-normal text-right">Qtd</th>
               <th className="p-4 border-b border-border font-normal">Obs</th>
+              {isAdmin && <th className="p-4 border-b border-border font-normal text-right">Ações</th>}
             </tr>
           </thead>
           <tbody className="text-foreground">
             {isLoading ? (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-muted-foreground">Carregando...</td></tr>
             ) : deliveries.length === 0 ? (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma baixa registrada</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-muted-foreground">Nenhuma baixa registrada</td></tr>
             ) : (
               deliveries.map((d: any) => (
                 <tr key={d.id} className="hover:bg-accent/50 border-b border-border/50">
@@ -310,12 +396,106 @@ export function DeliveriesTab() {
                   <td className="p-4 text-muted-foreground">{d.equipment?.ca}</td>
                   <td className="p-4 text-right font-bold">{d.quantity}</td>
                   <td className="p-4 text-muted-foreground">{d.notes || "-"}</td>
+                  {isAdmin && (
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEdit(d)}
+                          className="text-muted-foreground hover:text-primary transition-colors p-1"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleting(d)}
+                          className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Edit dialog */}
+      {editing && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-secondary border border-border w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-display font-bold text-foreground uppercase tracking-widest text-sm">EDITAR BAIXA</h3>
+              <button onClick={() => setEditing(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-4 flex flex-col gap-3">
+              <div className="text-xs text-muted-foreground">
+                <span className="text-primary">{editing.equipment?.code}</span> - {editing.equipment?.name} ×{editing.quantity}
+                <br />
+                <span className="tracking-widest uppercase">{editing.employees?.name}</span>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">DATA / HORA</label>
+                <input
+                  type="datetime-local"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase block mb-1">OBSERVAÇÃO</label>
+                <input
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full bg-background border border-border p-2.5 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+              <button
+                onClick={() => editMutation.mutate()}
+                disabled={editMutation.isPending}
+                className="mt-2 bg-primary text-primary-foreground px-6 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {editMutation.isPending ? "SALVANDO..." : "SALVAR"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir baixa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting && (
+                <>
+                  A quantidade de <strong>{deleting.quantity}× {deleting.equipment?.name}</strong> será devolvida ao estoque.
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteMutation.mutate();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir e devolver estoque
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
