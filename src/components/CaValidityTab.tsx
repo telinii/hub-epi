@@ -205,9 +205,21 @@ export function CaValidityTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground uppercase tracking-tight">
-        Validade — C.As
-      </h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground uppercase tracking-tight">
+          Validade — C.As
+        </h2>
+        {isAdmin && (
+          <button
+            onClick={bulkLookup}
+            disabled={!!bulkProgress}
+            className="bg-primary text-primary-foreground px-4 py-2 text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+          >
+            <Globe className="h-4 w-4" />
+            {bulkProgress ? `BUSCANDO ${bulkProgress.done}/${bulkProgress.total}` : "BUSCAR TODOS NA INTERNET"}
+          </button>
+        )}
+      </div>
 
       {/* Quick lookup */}
       <div className="bg-secondary border border-border p-5 flex flex-col gap-4">
