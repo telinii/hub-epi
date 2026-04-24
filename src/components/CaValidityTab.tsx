@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShieldCheck, Check, ChevronsUpDown, Pencil, X, Search } from "lucide-react";
+import { ShieldCheck, Check, ChevronsUpDown, Pencil, X, Search, RefreshCw, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -54,6 +54,93 @@ export function CaValidityTab() {
       return data;
     },
   });
+
+  const [lookupLoadingId, setLookupLoadingId] = useState<string | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+
+  async function lookupOne(eq: any): Promise<{ ok: boolean; status: string }> {
+    if (!/^\d+$/.test(String(eq.ca || "").trim())) {
+      await supabase
+        .from("equipment")
+        .update({ ca_status_note: eq.ca_status_note || "C.A. não informado" })
+        .eq("id", eq.id);
+      return { ok: false, status: "INVALID_CA" };
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke("lookup-ca", {
+        body: { ca: String(eq.ca).trim() },
+      });
+      if (error) throw error;
+      const update: any = {};
+      if (data?.expiry_date) {
+        update.ca_expiry_date = data.expiry_date;
+        update.ca_status_note = null;
+      } else {
+        update.ca_expiry_date = null;
+        update.ca_status_note = data?.raw_label || "C.A. não encontrado";
+      }
+      await supabase.from("equipment").update(update).eq("id", eq.id);
+      return { ok: !!data?.expiry_date, status: data?.status || "UNKNOWN" };
+    } catch (e: any) {
+      return { ok: false, status: "ERROR" };
+    }
+  }
+
+  const lookupOneMutation = useMutation({
+    mutationFn: async (eq: any) => {
+      setLookupLoadingId(eq.id);
+      const r = await lookupOne(eq);
+      return { eq, r };
+    },
+    onSuccess: ({ eq, r }) => {
+      setLookupLoadingId(null);
+      queryClient.invalidateQueries({ queryKey: ["equipment"] });
+      if (r.ok) toast.success(`Validade atualizada: ${eq.name}`);
+      else if (r.status === "INVALID_CA") toast.warning(`${eq.name}: C.A. não numérico`);
+      else toast.error(`${eq.name}: C.A. não encontrado`);
+    },
+    onError: () => {
+      setLookupLoadingId(null);
+      toast.error("Erro ao consultar C.A.");
+    },
+  });
+
+  const bulkLookup = async () => {
+    const list = equipment.filter((e: any) => /^\d+$/.test(String(e.ca || "").trim()));
+    if (list.length === 0) {
+      toast.warning("Nenhum EPI com C.A. numérico");
+      return;
+    }
+    setBulkProgress({ done: 0, total: list.length });
+    let updated = 0;
+    let notFound = 0;
+    const concurrency = 5;
+    let index = 0;
+    const workers = Array.from({ length: concurrency }).map(async () => {
+      while (index < list.length) {
+        const i = index++;
+        const r = await lookupOne(list[i]);
+        if (r.ok) updated++;
+        else notFound++;
+        setBulkProgress({ done: i + 1, total: list.length });
+      }
+    });
+    await Promise.all(workers);
+    // Atualizar EPIs com C.A. não numérico (nota automática)
+    const nonNumeric = equipment.filter((e: any) => !/^\d+$/.test(String(e.ca || "").trim()));
+    for (const eq of nonNumeric) {
+      if (!eq.ca_status_note) {
+        await supabase
+          .from("equipment")
+          .update({ ca_status_note: "C.A. não informado" })
+          .eq("id", eq.id);
+      }
+    }
+    setBulkProgress(null);
+    queryClient.invalidateQueries({ queryKey: ["equipment"] });
+    toast.success(`Concluído: ${updated} atualizados, ${notFound} não encontrados, ${nonNumeric.length} sem C.A. numérico`);
+  };
+
 
   const sorted = useMemo(() => {
     return [...equipment].sort((a: any, b: any) => {
@@ -118,9 +205,21 @@ export function CaValidityTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground uppercase tracking-tight">
-        Validade — C.As
-      </h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground uppercase tracking-tight">
+          Validade — C.As
+        </h2>
+        {isAdmin && (
+          <button
+            onClick={bulkLookup}
+            disabled={!!bulkProgress}
+            className="bg-primary text-primary-foreground px-4 py-2 text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+          >
+            <Globe className="h-4 w-4" />
+            {bulkProgress ? `BUSCANDO ${bulkProgress.done}/${bulkProgress.total}` : "BUSCAR TODOS NA INTERNET"}
+          </button>
+        )}
+      </div>
 
       {/* Quick lookup */}
       <div className="bg-secondary border border-border p-5 flex flex-col gap-4">
@@ -254,13 +353,23 @@ export function CaValidityTab() {
                     <td className="p-4 text-muted-foreground text-xs max-w-[200px] truncate">{eq.ca_status_note || "—"}</td>
                     {isAdmin && (
                       <td className="p-4 text-right">
-                        <button
-                          onClick={() => openEdit(eq)}
-                          className="text-muted-foreground hover:text-primary transition-colors p-1"
-                          title="Editar validade"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => lookupOneMutation.mutate(eq)}
+                            disabled={lookupLoadingId === eq.id || !/^\d+$/.test(String(eq.ca || "").trim())}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={/^\d+$/.test(String(eq.ca || "").trim()) ? "Buscar validade na internet" : "C.A. não numérico"}
+                          >
+                            <RefreshCw className={cn("h-4 w-4", lookupLoadingId === eq.id && "animate-spin")} />
+                          </button>
+                          <button
+                            onClick={() => openEdit(eq)}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1"
+                            title="Editar validade"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
