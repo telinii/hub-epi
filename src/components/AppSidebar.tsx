@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3 } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,10 +12,11 @@ const allItems = [
   { id: "estoque", label: "[01] ESTOQUE", icon: Package, group: "Módulos do Sistema", adminOnly: false },
   { id: "notas", label: "[02] NOTAS FISCAIS", icon: FileText, group: "Módulos do Sistema", adminOnly: false },
   { id: "baixas", label: "[03] BAIXAS", icon: ArrowDownCircle, group: "Módulos do Sistema", adminOnly: false },
-  { id: "relatorios", label: "[04] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema", adminOnly: true },
-  { id: "funcionarios", label: "[05] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal", adminOnly: true },
-  { id: "admin", label: "[06] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal", adminOnly: true },
-  { id: "config", label: "[07] CONFIGURAÇÕES", icon: Settings, group: "Sistema", adminOnly: true },
+  { id: "validade", label: "[04] VALIDADE C.A.", icon: ShieldCheck, group: "Módulos do Sistema", adminOnly: false },
+  { id: "relatorios", label: "[05] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema", adminOnly: true },
+  { id: "funcionarios", label: "[06] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal", adminOnly: true },
+  { id: "admin", label: "[07] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal", adminOnly: true },
+  { id: "config", label: "[08] CONFIGURAÇÕES", icon: Settings, group: "Sistema", adminOnly: true },
 ];
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {

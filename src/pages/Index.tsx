@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { InventoryTab } from "@/components/InventoryTab";
 import { InvoicesTab } from "@/components/InvoicesTab";
 import { DeliveriesTab } from "@/components/DeliveriesTab";
+import { CaValidityTab } from "@/components/CaValidityTab";
 import { EmployeesTab } from "@/components/EmployeesTab";
 import { ReportsTab } from "@/components/ReportsTab";
 import { AdminTab } from "@/components/AdminTab";
@@ -23,6 +24,7 @@ const Index = () => {
       case "estoque": return <InventoryTab />;
       case "notas": return <InvoicesTab />;
       case "baixas": return <DeliveriesTab />;
+      case "validade": return <CaValidityTab />;
       case "funcionarios": return <EmployeesTab />;
       case "relatorios": return <ReportsTab />;
       case "admin": return <AdminTab />;

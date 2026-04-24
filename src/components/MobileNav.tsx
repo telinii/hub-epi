@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3 } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -11,6 +11,7 @@ const allItems = [
   { id: "estoque", label: "ESTOQUE", icon: Package, adminOnly: false },
   { id: "notas", label: "NOTAS FISCAIS", icon: FileText, adminOnly: false },
   { id: "baixas", label: "BAIXAS", icon: ArrowDownCircle, adminOnly: false },
+  { id: "validade", label: "VALIDADE C.A.", icon: ShieldCheck, adminOnly: false },
   { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3, adminOnly: true },
   { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users, adminOnly: true },
   { id: "admin", label: "ADMIN", icon: Shield, adminOnly: true },
