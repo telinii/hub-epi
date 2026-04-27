@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3, ShieldCheck } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, BarChart3, ShieldCheck, Palette } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
