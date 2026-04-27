@@ -1,53 +1,65 @@
-# Plano: Buscar validade dos C.A.s automaticamente
+# Plano: Fluxo otimizado de baixas em sequência
 
-## Diagnóstico
+## Análise das suas duas opções
 
-**Problema 1 — Todos aparecem "SEM C.A.":** A coluna `ca_expiry_date` está `NULL` em todos os 46 EPIs. A aba só mostra como válido/vencido quando essa data está preenchida. Logo, o status "SEM C.A." está correto pelos dados — falta popular as datas.
+**Opção 1 — Acumular todas as baixas de vários funcionários e enviar tudo de uma vez:**
 
-**Problema 2 — Buscar na internet:** Existem EPIs com C.A. real (numérico) e EPIs com placeholder (`Verificar`, `NT`). Apenas os numéricos podem ser consultados.
+- Vantagem: 1 única operação no banco
+- Desvantagens reais:
+  - Se algo falhar no meio (rede cair, erro em 1 item), você perde TODO o trabalho acumulado
+  - Estoque só é validado no envio final → risco de descobrir falta de EPI depois de já ter "registrado" visualmente várias entregas
+  - UI fica complexa (lista de funcionários × lista de EPIs cada um)
+  - Risco de erro humano alto (esquecer de enviar, fechar a aba, etc.)
+- **Sobre "sobrecarregar o banco":** isso é um não-problema. O Supabase aguenta tranquilamente milhares de inserts por segundo. Uma baixa por funcionário é absolutamente trivial.
 
-Validei manualmente que `https://consultaca.com/{numero_ca}` retorna a data de validade no HTML. Exemplos testados:
-- C.A. 14235 (Abafador) → válido até **11/10/2029**
-- C.A. 44746 (PFF-2) → válido até **13/02/2030**
+**Opção 2 — Manter o fluxo atual, mas o funcionário fica "fixado" após a baixa:**
 
-## Solução
+- Cada baixa é independente e segura (se uma falhar, as outras já estão salvas)
+- Estoque validado a cada operação (sem surpresas)
+- Mais rápido na prática: você só troca de funcionário quando precisa
+- Histórico mais limpo (cada baixa = 1 evento real no tempo)
 
-### 1. Edge function `lookup-ca`
+## Recomendação: Opção 2
 
-Cria `supabase/functions/lookup-ca/index.ts` que recebe `{ ca: string }`, busca em `consultaca.com/{ca}` e devolve:
+É a mais segura, mais rápida no uso real, e a "sobrecarga" da Opção 1 é imaginária. Vamos implementar com melhorias para deixar o fluxo o mais ágil possível.
 
-```ts
-{ ca, status: "VÁLIDO" | "VENCIDO" | "NÃO ENCONTRADO", expiry_date: "YYYY-MM-DD" | null, raw_label: string }
-```
+## O que vai mudar em `DeliveriesTab.tsx`
 
-A extração usa regex no HTML para capturar o bloco **Validade:** (formato `dd/mm/yyyy`) e o bloco **Situação:**. Sem dependência de SDK externo. Tem CORS aberto e `verify_jwt = false`.
+### 1. Funcionário permanece selecionado após processar baixa
 
-### 2. Botão "Atualizar validade via C.A." na aba Validade — C.As
+No `onSuccess` do `deliverMutation`, em vez de resetar o `employeeId`, mantê-lo. Resetar apenas:
 
-Em `CaValidityTab.tsx`, adicionar (somente admin):
+- `cart` (limpar carrinho)
+- `notes` (limpar observação)
+- `deliveredAt` (atualizar para o horário atual)
 
-- Botão **"BUSCAR TODOS NA INTERNET"** no topo: percorre todos os EPIs cujo `ca` é puramente numérico, chama a edge function em paralelo (com limite de concorrência ~5) e faz UPDATE em `equipment.ca_expiry_date`. Mostra progresso (`X de Y`) e toast final com resumo (atualizados / não encontrados / inválidos).
-- Botão **"BUSCAR"** inline em cada linha da tabela: consulta apenas aquele C.A. e atualiza.
-- Para EPIs com C.A. não-numérico (`Verificar`, `NT`), o botão fica desabilitado e a coluna Nota recebe automaticamente `"C.A. não informado"` na primeira execução em massa (sem sobrescrever notas existentes).
+### 2. Indicador visual de "funcionário fixado"
 
-### 3. Sem alterações de schema
+Após a primeira baixa, mostrar um badge/chip ao lado do nome do funcionário com:
 
-As colunas `ca_expiry_date` e `ca_status_note` já existem. Apenas serão populadas pela função.
+- Texto tipo: "✓ Funcionário fixado — continue adicionando baixas"
+- Botão pequeno **"Trocar funcionário"** (ícone X) que limpa a seleção
+
+### 3. Botão "Limpar tudo"
+
+Botão secundário ao lado do "PROCESSAR BAIXA" que limpa funcionário + carrinho + observação, para quando terminar com aquele funcionário e quiser começar do zero (alternativa ao "Trocar funcionário").
+
+### 4. Toast melhorado
+
+Mensagem de sucesso muda para: *"Baixa registrada — pronto para próximo EPI de [Nome]"* enquanto o funcionário estiver fixado.
+
+### 5. Foco automático
+
+Após processar a baixa, focar automaticamente o seletor de EPI (`pickEquipment`) para acelerar a próxima entrada.
 
 ## Arquivos afetados
 
-- **Novo:** `supabase/functions/lookup-ca/index.ts` — scraper de consultaca.com
-- **Novo:** `supabase/config.toml` — adicionar bloco `[functions.lookup-ca] verify_jwt = false`
-- **Editado:** `src/components/CaValidityTab.tsx` — botão global + botão por linha + lógica de fetch/update
+- `src/components/DeliveriesTab.tsx` — apenas ajustes no `onSuccess`, adicionar badge de funcionário fixado, botão trocar/limpar e auto-foco.
 
-## Detalhes técnicos
+Nenhuma mudança de banco de dados. Nenhuma migração. Mudança contida em um único arquivo.  
+  
+  
+========================================================================  
+Nota: Implemente as duas opções, é melhor ter as duas doque apenas uma que seja bem vantajosa, quero experienciar ambas para depois decidir qual de fato implementar.
 
-- Concorrência limitada (5 req simultâneas) para não derrubar o site.
-- Regex de extração: `/Validade:[\s\S]*?(\d{2}\/\d{2}\/\d{4})/` e `/Situação:[\s\S]*?(VÁLIDO|VENCIDO|CANCELADO)/i`.
-- Conversão `dd/mm/yyyy` → `yyyy-mm-dd` antes do UPDATE.
-- Se `consultaca.com` retornar 404 ou não casar regex → marca `ca_status_note = "C.A. não encontrado"` e `ca_expiry_date = null`.
-- Erros de rede individuais não interrompem o lote — são contados no resumo final.
-
-## Observação
-
-`consultaca.com` é uma fonte de terceiros (não-oficial). É a única com URL pública por C.A. e HTML estável. Caso o layout mude no futuro, basta ajustar a regex na edge function.
+========================================================================
