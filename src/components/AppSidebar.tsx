@@ -16,7 +16,8 @@ const allItems = [
   { id: "relatorios", label: "[05] RELATÓRIOS", icon: BarChart3, group: "Módulos do Sistema", adminOnly: true },
   { id: "funcionarios", label: "[06] FUNCIONÁRIOS", icon: Users, group: "Gestão de Pessoal", adminOnly: true },
   { id: "admin", label: "[07] ADMINISTRADORES", icon: Shield, group: "Gestão de Pessoal", adminOnly: true },
-  { id: "config", label: "[08] CONFIGURAÇÕES", icon: Settings, group: "Sistema", adminOnly: true },
+  { id: "temas", label: "[08] TEMAS", icon: Palette, group: "Sistema", adminOnly: false },
+  { id: "config", label: "[09] CONFIGURAÇÕES", icon: Settings, group: "Sistema", adminOnly: true },
 ];
 
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {

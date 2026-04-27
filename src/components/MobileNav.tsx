@@ -15,6 +15,7 @@ const allItems = [
   { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3, adminOnly: true },
   { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users, adminOnly: true },
   { id: "admin", label: "ADMIN", icon: Shield, adminOnly: true },
+  { id: "temas", label: "TEMAS", icon: Palette, adminOnly: false },
   { id: "config", label: "CONFIG", icon: Settings, adminOnly: true },
 ];
 
