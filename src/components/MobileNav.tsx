@@ -1,4 +1,4 @@
-import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3, ShieldCheck } from "lucide-react";
+import { Package, FileText, ArrowDownCircle, Users, Shield, Settings, Menu, X, BarChart3, ShieldCheck, Palette } from "lucide-react";
 import { useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -15,6 +15,7 @@ const allItems = [
   { id: "relatorios", label: "RELATÓRIOS", icon: BarChart3, adminOnly: true },
   { id: "funcionarios", label: "FUNCIONÁRIOS", icon: Users, adminOnly: true },
   { id: "admin", label: "ADMIN", icon: Shield, adminOnly: true },
+  { id: "temas", label: "TEMAS", icon: Palette, adminOnly: false },
   { id: "config", label: "CONFIG", icon: Settings, adminOnly: true },
 ];
 

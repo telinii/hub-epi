@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { InventoryTab } from "@/components/InventoryTab";
@@ -9,15 +9,22 @@ import { EmployeesTab } from "@/components/EmployeesTab";
 import { ReportsTab } from "@/components/ReportsTab";
 import { AdminTab } from "@/components/AdminTab";
 import { ConfigTab } from "@/components/ConfigTab";
+import { ThemesTab } from "@/components/ThemesTab";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useTheme } from "@/hooks/useTheme";
 import { LogOut } from "lucide-react";
-import safetyWallpaper from "@/assets/safety-wallpaper.png";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("estoque");
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
+  const { theme, translucent } = useTheme();
+
+  useEffect(() => {
+    document.body.classList.toggle("translucent-mode", translucent);
+    return () => document.body.classList.remove("translucent-mode");
+  }, [translucent]);
 
   const renderTab = () => {
     switch (activeTab) {
@@ -29,17 +36,20 @@ const Index = () => {
       case "relatorios": return <ReportsTab />;
       case "admin": return <AdminTab />;
       case "config": return <ConfigTab />;
+      case "temas": return <ThemesTab />;
       default: return <InventoryTab />;
     }
   };
 
   return (
     <div className="min-h-screen flex bg-background relative">
-      <div
-        className="safety-wallpaper"
-        style={{ backgroundImage: `url(${safetyWallpaper})` }}
-        aria-hidden="true"
-      />
+      {theme.wallpaper && (
+        <div
+          className="safety-wallpaper"
+          style={{ backgroundImage: `url(${theme.wallpaper})` }}
+          aria-hidden="true"
+        />
+      )}
       <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="flex-1 flex flex-col min-w-0 relative z-10">
         <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />

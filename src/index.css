@@ -80,6 +80,35 @@
   .font-mono {
     font-family: var(--font-mono);
   }
+
+  /* Translucent surface utility — used directly + via overrides below */
+  .surface-translucent {
+    background-color: hsl(var(--secondary) / var(--surface-opacity, 1));
+    backdrop-filter: blur(var(--surface-blur, 0px));
+    -webkit-backdrop-filter: blur(var(--surface-blur, 0px));
+  }
+}
+
+/* Theme variables defaults */
+:root {
+  --surface-opacity: 1;
+  --surface-blur: 0px;
+  --wallpaper-opacity: 0.05;
+}
+
+/* When translucent mode is on, common surface backgrounds become semi-transparent
+   and gain a backdrop blur. We scope this to a body class to avoid breaking
+   other UI when disabled. */
+body.translucent-mode .bg-secondary,
+body.translucent-mode .bg-card,
+body.translucent-mode .bg-popover {
+  background-color: hsl(var(--secondary) / var(--surface-opacity)) !important;
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+}
+
+body.translucent-mode .bg-background {
+  background-color: hsl(var(--background) / var(--surface-opacity)) !important;
 }
 
 /* Animated safety wallpaper background */
@@ -99,7 +128,7 @@
   pointer-events: none;
   background-repeat: repeat;
   background-size: 480px auto;
-  opacity: 0.05;
+  opacity: var(--wallpaper-opacity, 0.05);
   animation: scroll-up 120s linear infinite;
   will-change: background-position;
 }
