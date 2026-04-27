@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { InventoryTab } from "@/components/InventoryTab";
@@ -9,10 +9,11 @@ import { EmployeesTab } from "@/components/EmployeesTab";
 import { ReportsTab } from "@/components/ReportsTab";
 import { AdminTab } from "@/components/AdminTab";
 import { ConfigTab } from "@/components/ConfigTab";
+import { ThemesTab } from "@/components/ThemesTab";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useTheme } from "@/hooks/useTheme";
 import { LogOut } from "lucide-react";
-import safetyWallpaper from "@/assets/safety-wallpaper.png";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("estoque");
